@@ -1,0 +1,268 @@
+# 使用 Ansible 安装和配置高可用性 Kubernetes 集群
+
+> 原文：<https://itnext.io/install-and-configure-a-high-available-kubernetes-cluster-with-ansible-ecaf77fe333f?source=collection_archive---------2----------------------->
+
+这个[职责](https://github.com/garutilorenzo/ansible-role-linux-kubernetes)将安装和配置一个高可用性的 Kubernetes 集群。这个 repo 使用 [kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/) 自动化了 Kubernetes 的安装过程。
+
+这个 repo 只是如何使用 Ansible automation 安装和配置 Kubernetes 集群的一个例子。对于生产环境，使用 [Kubespray](https://kubernetes.io/docs/setup/production-environment/tools/kubespray/)
+
+# 要求
+
+安装 ansible、ipaddr 和 netaddr:
+
+```
+pip install -r requirements.txt
+```
+
+从 GitHub 下载角色:
+
+```
+ansible-galaxy install git+https://github.com/garutilorenzo/ansible-role-linux-kubernetes.git
+```
+
+# 角色变量
+
+该角色接受以下[变量](https://github.com/garutilorenzo/ansible-role-linux-kubernetes#role-variables)。
+
+# 额外变量
+
+这个角色接受一个额外的变量 *kubernetes_init_host* 。第一次引导集群时使用该变量。该变量的值必须是其中一个主节点的主机名。当 ansible 在匹配的主机上运行时，kubernetes 将被初始化。
+
+# 已部署群集资源
+
+该角色[将安装 Nginx 入口控制器](https://garutilorenzo.github.io/ansible-role-kubernetes-cluster/#nginx-ingress-controller)和 [Longhorn](https://garutilorenzo.github.io/ansible-role-kubernetes-cluster/#longhorn) 。
+
+## Nginx 入口控制器
+
+[Nginx 入口控制器](https://kubernetes.github.io/ingress-nginx/)用作入口控制器。
+
+该安装是[裸机](https://kubernetes.github.io/ingress-nginx/deploy/#bare-metal-clusters)安装，然后通过节点端口服务暴露入口控制器。您可以自定义节点端口服务所公开的端口，使用[角色变量](https://garutilorenzo.github.io/ansible-role-kubernetes-cluster/#role-variables)来更改这些值。
+
+## 长角牛
+
+Longhorn 是一个轻量级的、可靠的、强大的分布式块存储系统。
+
+Longhorn 使用容器和微服务实现分布式块存储。Longhorn 为每个块设备卷创建一个专用的存储控制器，并跨存储在多个节点上的多个副本同步复制该卷。存储控制器和副本本身是使用 Kubernetes 编排的。
+
+# 无赖
+
+为了测试这个角色，你可以使用[流浪者](https://www.vagrantup.com/)和 [Virtualbox](https://www.virtualbox.org/) 来调出一个示例基础设施。一旦您下载了此 repo，请使用 vagger 启动虚拟机:
+
+```
+vagrant up
+```
+
+在流浪者文件中，您可以直接在流浪者用户的 authorized_keys 中注入您的公共 ssh 密钥。你必须更改流浪者文件中的 *CHANGE_ME* 占位符。您还可以通过更改 NNODES 变量(默认值:6)来调整部署的虚拟机数量
+
+# 使用此角色
+
+要使用该角色，您需要遵循[示例](https://github.com/garutilorenzo/ansible-role-linux-kubernetes/tree/master/examples)目录中的示例。使用您的主机调整 hosts.ini 文件，并运行行动手册:
+
+```
+lorenzo@mint-virtual:~$ ansible-playbook -i hosts-ubuntu.ini site.yml -e kubernetes_init_host=k8s-ubuntu-0
+```
+
+等待 Ansible 完成:
+
+```
+PLAY [kubemaster] ***************************************************************************************************************************************************TASK [Gathering Facts] **********************************************************************************************************************************************
+ok: [k8s-ubuntu-2]
+ok: [k8s-ubuntu-1]
+ok: [k8s-ubuntu-0]TASK [ansible-role-kubernetes : include_tasks] **********************************************************************************************************************
+included: /home/lorenzo/workspaces-local/ansible-role-kubernetes/tasks/setup_repo_Debian.yml for k8s-ubuntu-0, k8s-ubuntu-1, k8s-ubuntu-2 => (item=/home/lorenzo/workspaces-local/ansible-role-kubernetes/tasks/setup_repo_Debian.yml)TASK [ansible-role-kubernetes : Install required system packages] ***************************************************************************************************
+ok: [k8s-ubuntu-2]
+ok: [k8s-ubuntu-1]
+ok: [k8s-ubuntu-0]TASK [ansible-role-kubernetes : Add Google GPG apt Key] *************************************************************************************************************
+ok: [k8s-ubuntu-0]
+ok: [k8s-ubuntu-1]
+ok: [k8s-ubuntu-2]TASK [ansible-role-kubernetes : Add K8s Repository] *****************************************************************************************************************
+ok: [k8s-ubuntu-1]
+ok: [k8s-ubuntu-2]
+ok: [k8s-ubuntu-0]TASK [ansible-role-kubernetes : Add Docker GPG apt Key] *************************************************************************************************************
+ok: [k8s-ubuntu-1]
+ok: [k8s-ubuntu-0]
+ok: [k8s-ubuntu-2]TASK [ansible-role-kubernetes : shell] ******************************************************************************************************************************
+changed: [k8s-ubuntu-1]
+changed: [k8s-ubuntu-2]
+changed: [k8s-ubuntu-0]TASK [ansible-role-kubernetes : Add Docker Repository] **************************************************************************************************************
+ok: [k8s-ubuntu-0]
+ok: [k8s-ubuntu-1]
+ok: [k8s-ubuntu-2]TASK [ansible-role-kubernetes : setup] ******************************************************************************************************************************
+ok: [k8s-ubuntu-1]
+ok: [k8s-ubuntu-0]
+ok: [k8s-ubuntu-2]TASK [ansible-role-kubernetes : include_tasks] **********************************************************************************************************************
+included: /home/lorenzo/workspaces-local/ansible-role-kubernetes/tasks/preflight.yml for k8s-ubuntu-0, k8s-ubuntu-1, k8s-ubuntu-2TASK [ansible-role-kubernetes : disable ufw] ************************************************************************************************************************
+ok: [k8s-ubuntu-2]
+ok: [k8s-ubuntu-0]
+ok: [k8s-ubuntu-1]TASK [ansible-role-kubernetes : Install iptables-legacy] ************************************************************************************************************
+skipping: [k8s-ubuntu-0]
+skipping: [k8s-ubuntu-1]
+skipping: [k8s-ubuntu-2]TASK [ansible-role-kubernetes : Remove zram-generator-defaults] *****************************************************************************************************
+skipping: [k8s-ubuntu-0]
+skipping: [k8s-ubuntu-1]
+skipping: [k8s-ubuntu-2]TASK [ansible-role-kubernetes : disable firewalld] ******************************************************************************************************************
+skipping: [k8s-ubuntu-0]
+skipping: [k8s-ubuntu-1]
+skipping: [k8s-ubuntu-2]TASK [ansible-role-kubernetes : Put SELinux in permissive mode, logging actions that would be blocked.] *************************************************************
+skipping: [k8s-ubuntu-0]
+skipping: [k8s-ubuntu-1]
+skipping: [k8s-ubuntu-2]TASK [ansible-role-kubernetes : Disable SELinux] ********************************************************************************************************************
+skipping: [k8s-ubuntu-0]
+skipping: [k8s-ubuntu-1]
+skipping: [k8s-ubuntu-2]TASK [ansible-role-kubernetes : Install openssl] ********************************************************************************************************************
+ok: [k8s-ubuntu-2]
+ok: [k8s-ubuntu-1]
+ok: [k8s-ubuntu-0]TASK [ansible-role-kubernetes : load overlay kernel module] *********************************************************************************************************
+changed: [k8s-ubuntu-1]
+changed: [k8s-ubuntu-0]
+changed: [k8s-ubuntu-2]TASK [ansible-role-kubernetes : load br_netfilter kernel module] ****************************************************************************************************
+changed: [k8s-ubuntu-1]
+changed: [k8s-ubuntu-0]
+changed: [k8s-ubuntu-2][...]
+[...]
+[...]TASK [ansible-role-kubernetes : Add KUBELET_ROOT_DIR env var] *******************************************************************************************************
+skipping: [k8s-ubuntu-3]TASK [ansible-role-kubernetes : Add KUBELET_ROOT_DIR env var, set value] ********************************************************************************************
+skipping: [k8s-ubuntu-3]TASK [ansible-role-kubernetes : Install longhorn] *******************************************************************************************************************
+skipping: [k8s-ubuntu-3]TASK [ansible-role-kubernetes : Install longhorn storageclass] ******************************************************************************************************
+skipping: [k8s-ubuntu-3]TASK [ansible-role-kubernetes : include_tasks] **********************************************************************************************************************
+included: /home/lorenzo/workspaces-local/ansible-role-kubernetes/tasks/install_nginx_ingress.yml for k8s-ubuntu-3, k8s-ubuntu-4, k8s-ubuntu-5TASK [ansible-role-kubernetes : Check if ingress-nginx is installed] ************************************************************************************************
+changed: [k8s-ubuntu-3 -> k8s-ubuntu-0(192.168.25.110)]TASK [ansible-role-kubernetes : Install ingress-nginx] **************************************************************************************************************
+skipping: [k8s-ubuntu-3]TASK [ansible-role-kubernetes : render nginx_ingress_config.yml] ****************************************************************************************************
+skipping: [k8s-ubuntu-3]TASK [ansible-role-kubernetes : Apply nginx ingress config] *********************************************************************************************************
+skipping: [k8s-ubuntu-3]PLAY RECAP **********************************************************************************************************************************************************
+k8s-ubuntu-0               : ok=78   changed=24   unreachable=0    failed=0    skipped=25   rescued=0    ignored=3   
+k8s-ubuntu-1               : ok=52   changed=12   unreachable=0    failed=0    skipped=30   rescued=0    ignored=1   
+k8s-ubuntu-2               : ok=52   changed=12   unreachable=0    failed=0    skipped=30   rescued=0    ignored=1
+k8s-ubuntu-3               : ok=58   changed=30   unreachable=0    failed=0    skipped=35   rescued=0    ignored=1   
+k8s-ubuntu-4               : ok=52   changed=28   unreachable=0    failed=0    skipped=27   rescued=0    ignored=1   
+k8s-ubuntu-5               : ok=52   changed=28   unreachable=0    failed=0    skipped=27   rescued=0    ignored=1
+```
+
+现在我们有了一个以高可用性模式部署的 Kubernetes 集群，我们可以检查集群的状态:
+
+```
+root@k8s-ubuntu-0:~# kubectl get nodes
+NAME           STATUS   ROLES           AGE    VERSION
+k8s-ubuntu-0   Ready    control-plane   139m   v1.24.3
+k8s-ubuntu-1   Ready    control-plane   136m   v1.24.3
+k8s-ubuntu-2   Ready    control-plane   136m   v1.24.3
+k8s-ubuntu-3   Ready    <none>          117m   v1.24.3
+k8s-ubuntu-4   Ready    <none>          117m   v1.24.3
+k8s-ubuntu-5   Ready    <none>          117m   v1.24.3
+```
+
+检查 pod 状态:
+
+```
+root@k8s-ubuntu-0:~# kubectl get pods --all-namespaces
+NAMESPACE         NAME                                           READY   STATUS      RESTARTS       AGE
+ingress-nginx     ingress-nginx-admission-create-tsc8p           0/1     Completed   0              135m
+ingress-nginx     ingress-nginx-admission-patch-48tpn            0/1     Completed   0              135m
+ingress-nginx     ingress-nginx-controller-6dc865cd86-kfq88      1/1     Running     0              135m
+kube-flannel      kube-flannel-ds-fm4s6                          1/1     Running     0              117m
+kube-flannel      kube-flannel-ds-hhvxx                          1/1     Running     0              117m
+kube-flannel      kube-flannel-ds-ngdtc                          1/1     Running     0              117m
+kube-flannel      kube-flannel-ds-q5ncb                          1/1     Running     0              136m
+kube-flannel      kube-flannel-ds-vq4kk                          1/1     Running     0              139m
+kube-flannel      kube-flannel-ds-zshpf                          1/1     Running     0              137m
+kube-system       coredns-6d4b75cb6d-8dh9h                       1/1     Running     0              139m
+kube-system       coredns-6d4b75cb6d-xq98k                       1/1     Running     0              139m
+kube-system       etcd-k8s-ubuntu-0                              1/1     Running     0              139m
+kube-system       etcd-k8s-ubuntu-1                              1/1     Running     0              136m
+kube-system       etcd-k8s-ubuntu-2                              1/1     Running     0              136m
+kube-system       kube-apiserver-k8s-ubuntu-0                    1/1     Running     0              139m
+kube-system       kube-apiserver-k8s-ubuntu-1                    1/1     Running     0              135m
+kube-system       kube-apiserver-k8s-ubuntu-2                    1/1     Running     0              136m
+kube-system       kube-controller-manager-k8s-ubuntu-0           1/1     Running     0              139m
+kube-system       kube-controller-manager-k8s-ubuntu-1           1/1     Running     0              136m
+kube-system       kube-controller-manager-k8s-ubuntu-2           1/1     Running     0              135m
+kube-system       kube-proxy-59jqx                               1/1     Running     0              136m
+kube-system       kube-proxy-8mjwr                               1/1     Running     0              139m
+kube-system       kube-proxy-8nhbw                               1/1     Running     0              117m
+kube-system       kube-proxy-j2rrx                               1/1     Running     0              117m
+kube-system       kube-proxy-qwd5r                               1/1     Running     0              117m
+kube-system       kube-proxy-vcs7g                               1/1     Running     0              137m
+kube-system       kube-scheduler-k8s-ubuntu-0                    1/1     Running     0              139m
+kube-system       kube-scheduler-k8s-ubuntu-1                    1/1     Running     0              136m
+kube-system       kube-scheduler-k8s-ubuntu-2                    1/1     Running     0              135m
+kube-system       kube-vip-k8s-ubuntu-0                          1/1     Running     1 (136m ago)   139m
+kube-system       kube-vip-k8s-ubuntu-1                          1/1     Running     0              136m
+kube-system       kube-vip-k8s-ubuntu-2                          1/1     Running     0              136m
+longhorn-system   csi-attacher-dcb85d774-jrggr                   1/1     Running     0              114m
+longhorn-system   csi-attacher-dcb85d774-slhqt                   1/1     Running     0              114m
+longhorn-system   csi-attacher-dcb85d774-xcbxn                   1/1     Running     0              114m
+longhorn-system   csi-provisioner-5d8dd96b57-74x6h               1/1     Running     0              114m
+longhorn-system   csi-provisioner-5d8dd96b57-kdzdf               1/1     Running     0              114m
+longhorn-system   csi-provisioner-5d8dd96b57-xmpjf               1/1     Running     0              114m
+longhorn-system   csi-resizer-7c5bb5fd65-4262v                   1/1     Running     0              114m
+longhorn-system   csi-resizer-7c5bb5fd65-mfjgv                   1/1     Running     0              114m
+longhorn-system   csi-resizer-7c5bb5fd65-qw944                   1/1     Running     0              114m
+longhorn-system   csi-snapshotter-5586bc7c79-bs2xn               1/1     Running     0              114m
+longhorn-system   csi-snapshotter-5586bc7c79-d927b               1/1     Running     0              114m
+longhorn-system   csi-snapshotter-5586bc7c79-v99t6               1/1     Running     0              114m
+longhorn-system   engine-image-ei-766a591b-hrs6g                 1/1     Running     0              114m
+longhorn-system   engine-image-ei-766a591b-n9fsn                 1/1     Running     0              114m
+longhorn-system   engine-image-ei-766a591b-vxhbb                 1/1     Running     0              114m
+longhorn-system   instance-manager-e-3dba6914                    1/1     Running     0              114m
+longhorn-system   instance-manager-e-7bd8b1ff                    1/1     Running     0              114m
+longhorn-system   instance-manager-e-aca0fdc4                    1/1     Running     0              114m
+longhorn-system   instance-manager-r-244c040c                    1/1     Running     0              114m
+longhorn-system   instance-manager-r-39bd81b1                    1/1     Running     0              114m
+longhorn-system   instance-manager-r-3b7f12b1                    1/1     Running     0              114m
+longhorn-system   longhorn-admission-webhook-858d86b96b-j5rcv    1/1     Running     0              135m
+longhorn-system   longhorn-admission-webhook-858d86b96b-lphkq    1/1     Running     0              135m
+longhorn-system   longhorn-conversion-webhook-576b5c45c7-4p55x   1/1     Running     0              135m
+longhorn-system   longhorn-conversion-webhook-576b5c45c7-lq686   1/1     Running     0              135m
+longhorn-system   longhorn-csi-plugin-f7zmn                      2/2     Running     0              114m
+longhorn-system   longhorn-csi-plugin-hs58p                      2/2     Running     0              114m
+longhorn-system   longhorn-csi-plugin-wfpfs                      2/2     Running     0              114m
+longhorn-system   longhorn-driver-deployer-96cf98c98-7hzft       1/1     Running     0              135m
+longhorn-system   longhorn-manager-92xws                         1/1     Running     0              116m
+longhorn-system   longhorn-manager-b6knm                         1/1     Running     0              116m
+longhorn-system   longhorn-manager-tg2zc                         1/1     Running     0              116m
+longhorn-system   longhorn-ui-86b56b95c8-ctbvf                   1/1     Running     0              135m
+```
+
+我们可以看到，longhorn，nginx ingress 和所有的 kube 系统吊舱。
+
+我们还可以检查 nginx 入口控制器的服务:
+
+```
+root@k8s-ubuntu-0:~# kubectl get svc -n ingress-nginx
+NAME                                    TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE
+ingress-nginx-controller                NodePort    10.111.203.177   <none>        80:30080/TCP,443:30443/TCP   136m
+ingress-nginx-controller-admission      ClusterIP   10.105.11.11     <none>        443/TCP                      136m
+```
+
+我们可以看到 nginx 入口控制器监听端口，在本例中，http 端口是 30080，https 端口是 30443。我们可以从外部机器测试入口控制器:
+
+```
+lorenzo@mint-virtual:~$ curl -v [http://192.168.25.110:30080](http://192.168.25.110:30080)
+*   Trying 192.168.25.110:30080...
+* TCP_NODELAY set
+* Connected to 192.168.25.110 (192.168.25.110) port 30080 (#0)
+> GET / HTTP/1.1
+> Host: 192.168.25.110:30080
+> User-Agent: curl/7.68.0
+> Accept: */*
+> 
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 404 Not Found
+< Date: Wed, 17 Aug 2022 12:26:17 GMT
+< Content-Type: text/html
+< Content-Length: 146
+< Connection: keep-alive
+< 
+<html>
+<head><title>404 Not Found</title></head>
+<body>
+<center><h1>404 Not Found</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+* Connection #0 to host 192.168.25.110 left intact
+```
+
+# 恭喜
+
+您已经成功部署了一个高可用性的 Kubernetes 集群，现在您可以部署您的应用程序了！
